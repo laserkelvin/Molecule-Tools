@@ -18,12 +18,12 @@ enable_notebook()
 # Molecule class, a dictionary of atoms. Might be a bit clunky to 
 # reference...
 class Molecule:
-    Atoms = {}
-    CalculatedCOM = False
-    COM = np.array([0., 0., 0.])
     # Initialises by adding instances of atoms class to the dictionary
     # from XYZ format
     def __init__(self, InputXYZ):
+        self.CalculatedCOM = False
+        self.Atoms = {}
+        self.COM = np.array([0., 0., 0.])
         for atom in enumerate(InputXYZ):
             self.Atoms[str(atom[0])] = Atom(atom[1][1], atom[1][2], atom[1][3], atom[1][0])
         self.NAtoms = len(self.Atoms)
@@ -60,24 +60,26 @@ class Molecule:
             Y = np.zeros((NAtoms + 1), dtype=float)             # one more element for COM point
             Z = np.zeros((NAtoms + 1), dtype=float)
             Size = np.zeros((NAtoms + 1), dtype=float)          # Size of the atoms
-        print len(Size)
-        print NAtoms
         for AtomNumber in range(NAtoms):                        # Loop over all atoms
             X[AtomNumber] = self.Atoms[str(AtomNumber)].X
             Y[AtomNumber] = self.Atoms[str(AtomNumber)].Y
             Z[AtomNumber] = self.Atoms[str(AtomNumber)].Z
             AtomicSymbol = self.Atoms[str(AtomNumber)].Symbol
             Colors.append(AtomicColours[AtomicSymbol])          # work out the colour for atom
-            Size[AtomNumber] = AtomicRadii[AtomicSymbol] * 150.
+            Size[AtomNumber] = AtomicRadii[AtomicSymbol] * 250.
         if self.CalculatedCOM == True:                          # If we calculated COM before plot it too
             X[NAtoms] = self.COM[0]
             Y[NAtoms] = self.COM[1]
             Z[NAtoms] = self.COM[2]
-            Size[NAtoms] = AtomicRadii["COM"] * 150.
+            Size[NAtoms] = AtomicRadii["COM"] * 250.
             Colors.append(AtomicColours["COM"])
         fig = plt.figure()                                      # Use matplotlib to plot atoms in 3D scatter
         ax = plt.axes(projection = "3d")
-        ax.scatter(X, Y, Z, s=Size, c=Colors)
+        ax.w_xaxis.gridlines.set_lw(5.0)
+        ax.w_yaxis.gridlines.set_lw(5.0)
+        ax.w_zaxis.gridlines.set_lw(5.0)
+        ax.scatter(X, Y, Z, s=Size, c=Colors, depthshade=False)
+        plt.show()
     def GenerateBonds(self, Threshold=1.4):                     # Generate a list of bonds based on distance
         Bonds = []
         for AtomNumber1 in range(self.NAtoms):
