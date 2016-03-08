@@ -29,49 +29,65 @@ class Molecule:
         self.NAtoms = len(self.Atoms)
     # Function to calculate the centre of mass for a given molecule in XYZ coordinates
     def CalculateCOM(self):
-        CumSum = 0.                         # Cumulative sum of m_i * sum(r_i)
-        TotalMass = 0.                      # Total mass of molecule
+        CumSum = 0.                                             # Cumulative sum of m_i * sum(r_i)
+        TotalMass = 0.                                          # Total mass of molecule
         for AtomNumber in range(len(self.Atoms)):               # Loop over all atoms
             CumSum = CumSum + self.Atoms[str(AtomNumber)].Mass * self.Atoms[str(AtomNumber)].Coordinates()
             TotalMass = TotalMass + self.Atoms[str(AtomNumber)].Mass
-        self.CalculatedCOM = True           # Flag COM as having been calculated for plotting
+        self.CalculatedCOM = True                               # Flag COM as having been calculated for plotting
         self.COM = (1. / TotalMass) * CumSum
         return self.COM
     # Function to plot up the molecule using an xyz matplotlib plot
     def Show(self):
-        HydrogenRadius = 53.                          # in picometres
+        HydrogenRadius = 53.                                    # in picometres
         AtomicRadii = {"H": 53. / HydrogenRadius,
                        "C": 67. / HydrogenRadius,
-                       "O": 48. / HydrogenRadius}
-        AtomicColours = {"H": "white",                # CPK colours
+                       "O": 48. / HydrogenRadius,
+                       "COM": 50. / HydrogenRadius}
+        AtomicColours = {"H": "white",                          # CPK colours
                          "C": "black",
-                         "O": "red"}
+                         "O": "red",
+                         "COM": "green"}
         NAtoms = len(self.Atoms)
-        X = np.zeros((NAtoms), dtype=float)                  # Arrays for holding xyz coordinates
-        Y = np.zeros((NAtoms), dtype=float)
-        Z = np.zeros((NAtoms), dtype=float)
         Colors = []
-        Size = np.zeros((NAtoms), dtype=float)               # Size of the atoms
-        for AtomNumber in range(NAtoms):               # Loop over all atoms
+        if self.CalculatedCOM == False:
+            X = np.zeros((NAtoms), dtype=float)                 # Arrays for holding xyz coordinates
+            Y = np.zeros((NAtoms), dtype=float)
+            Z = np.zeros((NAtoms), dtype=float)
+            Size = np.zeros((NAtoms), dtype=float)
+        else:
+            X = np.zeros((NAtoms + 1), dtype=float)             # Arrays for holding xyz coordinates
+            Y = np.zeros((NAtoms + 1), dtype=float)             # one more element for COM point
+            Z = np.zeros((NAtoms + 1), dtype=float)
+            Size = np.zeros((NAtoms + 1), dtype=float)          # Size of the atoms
+        print len(Size)
+        print NAtoms
+        for AtomNumber in range(NAtoms):                        # Loop over all atoms
             X[AtomNumber] = self.Atoms[str(AtomNumber)].X
             Y[AtomNumber] = self.Atoms[str(AtomNumber)].Y
             Z[AtomNumber] = self.Atoms[str(AtomNumber)].Z
             AtomicSymbol = self.Atoms[str(AtomNumber)].Symbol
             Colors.append(AtomicColours[AtomicSymbol])          # work out the colour for atom
             Size[AtomNumber] = AtomicRadii[AtomicSymbol] * 150.
+        if self.CalculatedCOM == True:                          # If we calculated COM before plot it too
+            X[NAtoms] = self.COM[0]
+            Y[NAtoms] = self.COM[1]
+            Z[NAtoms] = self.COM[2]
+            Size[NAtoms] = AtomicRadii["COM"] * 150.
+            Colors.append(AtomicColours["COM"])
         fig = plt.figure()
         ax = plt.axes(projection = "3d")
         ax.scatter(X, Y, Z, s=Size, c=Colors)
-    def GenerateBonds(self, Threshold=1.6):
+    def GenerateBonds(self, Threshold=1.4):                     # Generate a list of bonds based on distance
         Bonds = []
         for AtomNumber1 in range(self.NAtoms):
             for AtomNumber2 in range(self.NAtoms):
-                if AtomNumber1 == AtomNumber2:
+                if AtomNumber1 == AtomNumber2:                  # If it's the same atom don't worry about it
                     pass
                 else:
                     Distance = CalculateDistance(self.Atoms[str(AtomNumber1)], self.Atoms[str(AtomNumber2)])
-                    if Distance <= Threshold:
-                        Bonds.append((AtomNumber1, AtomNumber2))
+                    if Distance <= Threshold:                   # If distance is less than threshold, it's a bond!
+                        Bonds.append( (AtomNumber1, AtomNumber2) )
         self.Bonds = Bonds
         return Bonds
     def ChemView(self):
@@ -85,10 +101,10 @@ class Molecule:
             mv = MolecularViewer(Coordinates, topology={'atom_types': AtomSymbols,
                                                         'bonds': self.Bonds})
         except AttributeError:
-            self.GenerateBonds()                                                              # If not already generated, make the bonds
+            self.GenerateBonds()                                  # If not already generated, make the bonds
             mv = MolecularViewer(Coordinates, topology={'atom_types': AtomSymbols,
                                                         'bonds': self.Bonds})
-        mv.points()
+        mv.ball_and_sticks()
         return mv
 
 # Atom class, has attributes of the xyz coordinates as well as its symbol and mass
