@@ -54,7 +54,7 @@ class Molecule:
             X = np.zeros((NAtoms), dtype=float)                 # Arrays for holding xyz coordinates
             Y = np.zeros((NAtoms), dtype=float)
             Z = np.zeros((NAtoms), dtype=float)
-            Size = np.zeros((NAtoms), dtype=float)
+            Size = np.zeros((NAtoms), dtype=float)              # Array for holding size of atoms
         else:
             X = np.zeros((NAtoms + 1), dtype=float)             # Arrays for holding xyz coordinates
             Y = np.zeros((NAtoms + 1), dtype=float)             # one more element for COM point
@@ -75,7 +75,7 @@ class Molecule:
             Z[NAtoms] = self.COM[2]
             Size[NAtoms] = AtomicRadii["COM"] * 150.
             Colors.append(AtomicColours["COM"])
-        fig = plt.figure()
+        fig = plt.figure()                                      # Use matplotlib to plot atoms in 3D scatter
         ax = plt.axes(projection = "3d")
         ax.scatter(X, Y, Z, s=Size, c=Colors)
     def GenerateBonds(self, Threshold=1.4):                     # Generate a list of bonds based on distance
@@ -90,18 +90,18 @@ class Molecule:
                         Bonds.append( (AtomNumber1, AtomNumber2) )
         self.Bonds = Bonds
         return Bonds
-    def ChemView(self):
-        NAtoms = len(self.Atoms)
+    def ChemView(self):                                         # Use ChemView module in notebook to plot molecule
+        NAtoms = self.NAtoms
         Coordinates = np.zeros((NAtoms, 3), dtype=float)
         AtomSymbols = []
-        for AtomNumber in range(NAtoms):
+        for AtomNumber in range(NAtoms):                        # Make a list of XYZ and atomic symbol arrays
             Coordinates[AtomNumber] = self.Atoms[str(AtomNumber)].Coordinates()
             AtomSymbols.append(self.Atoms[str(AtomNumber)].Symbol)
         try:
             mv = MolecularViewer(Coordinates, topology={'atom_types': AtomSymbols,
                                                         'bonds': self.Bonds})
-        except AttributeError:
-            self.GenerateBonds()                                  # If not already generated, make the bonds
+        except AttributeError:                                  # if self.Bonds isn't already generated, catch exception
+            self.GenerateBonds()                                # If not already generated, make the bonds
             mv = MolecularViewer(Coordinates, topology={'atom_types': AtomSymbols,
                                                         'bonds': self.Bonds})
         mv.ball_and_sticks()
