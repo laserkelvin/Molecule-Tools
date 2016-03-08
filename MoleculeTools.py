@@ -7,6 +7,8 @@ from scipy import constants
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.axes3d import Axes3D
+from chemview import enable_notebook, MolecularViewer
+enable_notebook()
 
 # Since I can't get PyBel to work properly, gonna try and
 # write a few of my own routines to get the ball rolling
@@ -23,7 +25,8 @@ class Molecule:
     # from XYZ format
     def __init__(self, InputXYZ):
         for atom in enumerate(InputXYZ):
-            self.Atoms[str(atom[0])] = (Atom(atom[1][1], atom[1][2], atom[1][3], atom[1][0]))
+            self.Atoms[str(atom[0])] = Atom(atom[1][1], atom[1][2], atom[1][3], atom[1][0])
+        self.NAtoms = len(self.Atoms)
     # Function to calculate the centre of mass for a given molecule in XYZ coordinates
     def CalculateCOM(self):
         CumSum = 0.                         # Cumulative sum of m_i * sum(r_i)
@@ -49,7 +52,7 @@ class Molecule:
         Z = np.zeros((NAtoms), dtype=float)
         Colors = []
         Size = np.zeros((NAtoms), dtype=float)               # Size of the atoms
-        for AtomNumber in range(len(self.Atoms)):               # Loop over all atoms
+        for AtomNumber in range(NAtoms):               # Loop over all atoms
             X[AtomNumber] = self.Atoms[str(AtomNumber)].X
             Y[AtomNumber] = self.Atoms[str(AtomNumber)].Y
             Z[AtomNumber] = self.Atoms[str(AtomNumber)].Z
@@ -59,6 +62,34 @@ class Molecule:
         fig = plt.figure()
         ax = plt.axes(projection = "3d")
         ax.scatter(X, Y, Z, s=Size, c=Colors)
+    def GenerateBonds(self, Threshold=1.6):
+        Bonds = []
+        for AtomNumber1 in range(self.NAtoms):
+            for AtomNumber2 in range(self.NAtoms):
+                if AtomNumber1 == AtomNumber2:
+                    pass
+                else:
+                    Distance = CalculateDistance(self.Atoms[str(AtomNumber1)], self.Atoms[str(AtomNumber2)])
+                    if Distance <= Threshold:
+                        Bonds.append((AtomNumber1, AtomNumber2))
+        self.Bonds = Bonds
+        return Bonds
+    def ChemView(self):
+        NAtoms = len(self.Atoms)
+        Coordinates = np.zeros((NAtoms, 3), dtype=float)
+        AtomSymbols = []
+        for AtomNumber in range(NAtoms):
+            Coordinates[AtomNumber] = self.Atoms[str(AtomNumber)].Coordinates()
+            AtomSymbols.append(self.Atoms[str(AtomNumber)].Symbol)
+        try:
+            mv = MolecularViewer(Coordinates, topology={'atom_types': AtomSymbols,
+                                                        'bonds': self.Bonds})
+        except AttributeError:
+            self.GenerateBonds()                                                              # If not already generated, make the bonds
+            mv = MolecularViewer(Coordinates, topology={'atom_types': AtomSymbols,
+                                                        'bonds': self.Bonds})
+        mv.points()
+        return mv
 
 # Atom class, has attributes of the xyz coordinates as well as its symbol and mass
 class Atom:
