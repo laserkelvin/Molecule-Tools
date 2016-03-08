@@ -5,6 +5,8 @@
 
 from scipy import constants
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 # Since I can't get PyBel to work properly, gonna try and
 # write a few of my own routines to get the ball rolling
@@ -15,9 +17,48 @@ import numpy as np
 # reference...
 class Molecule:
     Atoms = {}
+    CalculatedCOM = False
+    COM = np.array([0., 0., 0.])
+    # Initialises by adding instances of atoms class to the dictionary
+    # from XYZ format
     def __init__(self, InputXYZ):
         for atom in enumerate(InputXYZ):
             self.Atoms[str(atom[0])] = (Atom(atom[1][1], atom[1][2], atom[1][3], atom[1][0]))
+    # Function to calculate the centre of mass for a given molecule in XYZ coordinates
+    def CalculateCOM(self):
+        CumSum = 0.                         # Cumulative sum of m_i * sum(r_i)
+        TotalMass = 0.                      # Total mass of molecule
+        for AtomNumber in range(len(self.Atoms)):               # Loop over all atoms
+            CumSum = CumSum + self.Atoms[str(AtomNumber)].Mass * self.Atoms[str(AtomNumber)].Coordinates()
+            TotalMass = TotalMass + self.Atoms[str(AtomNumber)].Mass
+        self.CalculatedCOM = True           # Flag COM as having been calculated for plotting
+        self.COM = (1. / TotalMass) * CumSum
+        return self.COM
+    # Function to plot up the molecule using an xyz matplotlib plot
+    def Show(self):
+        HydrogenRadius = 53.                          # in picometres
+        AtomicRadii = {"H": 53. / HydrogenRadius,
+                       "C": 67. / HydrogenRadius,
+                       "O": 48. / HydrogenRadius}
+        AtomicColours = {"H": "white",                # CPK colours
+                         "C": "black",
+                         "O": "red"}
+        NAtoms = len(self.Atoms)
+        X = np.zeros((NAtoms), dtype=float)                  # Arrays for holding xyz coordinates
+        Y = np.zeros((NAtoms), dtype=float)
+        Z = np.zeros((NAtoms), dtype=float)
+        Colors = []
+        Size = np.zeros((NAtoms), dtype=float)               # Size of the atoms
+        for AtomNumber in range(len(self.Atoms)):               # Loop over all atoms
+            X[AtomNumber] = self.Atoms[str(AtomNumber)].X
+            Y[AtomNumber] = self.Atoms[str(AtomNumber)].Y
+            Z[AtomNumber] = self.Atoms[str(AtomNumber)].Z
+            AtomicSymbol = self.Atoms[str(AtomNumber)].Symbol
+            Colors.append(AtomicColours[AtomicSymbol])          # work out the colour for atom
+            Size[AtomNumber] = AtomicRadii[AtomicSymbol] * 150.
+        fig = plt.figure()
+        ax = plt.axes(projection = "3d")
+        ax.scatter(X, Y, Z, s=Size, c=Colors)
 
 # Atom class, has attributes of the xyz coordinates as well as its symbol and mass
 class Atom:
@@ -72,6 +113,7 @@ def Symbol2Mass(Atom):
                 "C": 12.00,
                 "O": 15.99491461957,
                 }
+#    return MassList[Atom]                                  # Returns mass in amu
     return (MassList[Atom] / constants.Avogadro) / 1e3      # Return mass in kg
 
 # Calculates the distance between two atoms
@@ -84,11 +126,12 @@ def CalculateDistance(A, B):
 # Uses cartesian points A, B, C to calculate the angle
 # formed by A - B - C using vectors. Atom B is the centre of the angle!
 def CalculateAngle(A, B, C):
-    AB = B.Coordinates() - A.Coordinates()
-    BC = C.Coordinates() - B.Coordinates()
-    ABLength = CalculateDistance(A, B)
-    BCLength = CalculateDistance(B, C)
-    DotProduct = np.dot(AB, BC)
+    AB = B.Coordinates() - A.Coordinates()           # Calculate vector AB
+    BC = C.Coordinates() - B.Coordinates()           # Calculate vector BC
+    ABLength = CalculateDistance(A, B)               # Work out magnitude of AB
+    BCLength = CalculateDistance(B, C)               # Magnitude of BC
+    DotProduct = np.dot(AB, BC)                      # Dot product of AB dot BC
+    # Return the angle formed by A - B - C in degrees
     return 180. - (np.arccos(DotProduct / (ABLength * BCLength)) * (180. / np.pi))
 
 ############################### Moments of Inertia ###############################
