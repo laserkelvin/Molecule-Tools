@@ -9,6 +9,35 @@ import numpy as np
 # Since I can't get PyBel to work properly, gonna try and
 # write a few of my own routines to get the ball rolling
 
+############################### Classes ###############################
+
+# Molecule class, a dictionary of atoms. Might be a bit clunky to 
+# reference...
+class Molecule:
+    Atoms = {}
+    def __init__(self, InputXYZ):
+        for atom in enumerate(InputXYZ):
+            self.Atoms[str(atom[0])] = (Atom(atom[1][1], atom[1][2], atom[1][3], atom[1][0]))
+
+# Atom class, has attributes of the xyz coordinates as well as its symbol and mass
+class Atom:
+    X = 0.
+    Y = 0.
+    Z = 0.
+    Symbol = " "
+    Mass = 0.
+    def __init__(self, X, Y, Z, Symbol):
+        self.X = float(X)
+        self.Y = float(Y)
+        self.Z = float(Z)
+        self.Symbol = Symbol
+        self.Mass = Symbol2Mass(self.Symbol)
+    # Returns the coordinates of an atom
+    def Coordinates(self):
+        return np.array([self.X, self.Y, self.Z])
+
+############################### I/O ###############################
+
 # Function to read the output xyz coordinates. The below functions
 # will work better if this is rotated to the inertial frame of reference!
 # i.e. standard orientation in Gaussian
@@ -32,6 +61,8 @@ def ReadNormalModes(File):
         NormalModes.append(fc[line].split())
     return NormalModes
 
+############################### Tools ###############################
+
 # Function that stores a library with all the atomic masses
 # and returns it for whatever atom you specify
 def Symbol2Mass(Atom):
@@ -42,6 +73,25 @@ def Symbol2Mass(Atom):
                 "O": 15.99491461957,
                 }
     return (MassList[Atom] / constants.Avogadro) / 1e3      # Return mass in kg
+
+# Calculates the distance between two atoms
+def CalculateDistance(A, B):
+    dX = (A.X - B.X)**2
+    dY = (A.Y - B.Y)**2
+    dZ = (A.Z - B.Z)**2
+    return np.sqrt(dX + dY + dZ)
+
+# Uses cartesian points A, B, C to calculate the angle
+# formed by A - B - C using vectors. Atom B is the centre of the angle!
+def CalculateAngle(A, B, C):
+    AB = B.Coordinates() - A.Coordinates()
+    BC = C.Coordinates() - B.Coordinates()
+    ABLength = CalculateDistance(A, B)
+    BCLength = CalculateDistance(B, C)
+    DotProduct = np.dot(AB, BC)
+    return 180. - (np.arccos(DotProduct / (ABLength * BCLength)) * (180. / np.pi))
+
+############################### Moments of Inertia ###############################
 
 # Here the routines take x,y,z as Angstroms, and mass in grams!
 # XX diagonal elemnt of I
@@ -88,6 +138,8 @@ def CalculateInertiaMatrix(Molecule):
 # These should agree with the rotational constants in Gaussian
 def PMI2ABC(Inertia):
     return constants.h / (8 * (np.pi**2) * (constants.c * 100) * Inertia)
+
+############################### Normal mode analysis ###############################
 
 # Take an input cartesian coordinate (x,y,z) as well as the corresponding
 # normal mode displacement for that x,y,z
