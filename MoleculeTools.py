@@ -138,13 +138,20 @@ class Molecule:
             InertiaMatrix[1,2] = InertiaMatrix[1,2] + IYZ(Coordinates[1], Coordinates[2], Mass)
             self.InertiaMatrix = (InertiaMatrix + InertiaMatrix.T) / 2.
             return self.InertiaMatrix
+    # Diagonalise the moments of inerta matrix and work out the principal moments of inertia
     def PrincipalMoments(self):
         if type(self.InertiaMatrix) == None:                    # check if MOI matrix has been calculated
             self.CalculateInertiaMatrix()
         else:
-            Diagonal = np.linalg.eig(self.InertiaMatrix)[0]
+            Diagonal = np.linalg.eig(self.InertiaMatrix)[0]     # Ignore the eigenvectors
             self.PMI = PMI2ABC(Diagonal)
             return self.PMI
+    def SumMass(self):
+        Mass = 0.
+        for AtomNumber in range(self.NAtoms):
+            Mass = Mass + self.Atoms[str(AtomNumber)].Mass
+        self.Mass = Mass
+        return self.Mass
 
 # Atom class, has attributes of the xyz coordinates as well as its symbol and mass
 class Atom:
@@ -222,6 +229,7 @@ def CalculateAngle(A, B, C):
     return 180. - (np.arccos(DotProduct / (ABLength * BCLength)) * (180. / np.pi))
 
 # Function to return the reduced mass of fragments
+# Takes a list of masses in whatever units
 def CalculateReducedMass(Masses):
     ReducedMass = 0.
     for mass in enumerate(Masses):
