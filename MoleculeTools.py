@@ -221,6 +221,13 @@ def CalculateAngle(A, B, C):
     # Return the angle formed by A - B - C in degrees
     return 180. - (np.arccos(DotProduct / (ABLength * BCLength)) * (180. / np.pi))
 
+# Function to return the reduced mass of fragments
+def CalculateReducedMass(Masses):
+    ReducedMass = 0.
+    for mass in enumerate(Masses):
+        ReducedMass = ReducedMass + (1. / mass[1])
+    return 1. / ReducedMass
+
 ############################### Moments of Inertia ###############################
 
 # Here the routines take x,y,z as Angstroms, and mass in grams!
