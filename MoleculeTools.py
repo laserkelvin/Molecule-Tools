@@ -46,6 +46,11 @@ class Molecule:
             self.Atoms[str(AtomNumber)].X = self.Atoms[str(AtomNumber)].X + (-COM[0])
             self.Atoms[str(AtomNumber)].Y = self.Atoms[str(AtomNumber)].Y + (-COM[1])
             self.Atoms[str(AtomNumber)].Z = self.Atoms[str(AtomNumber)].Z + (-COM[2])
+    # Function that will format xyz
+    def ExportXYZ(self):
+        for AtomNumber in range(self.NAtoms):
+            Coordinates = self.Atoms[str(AtomNumber)].Coordinates()
+            print self.Atoms[str(AtomNumber)].Symbol + "\t" + str(Coordinates[0]) + "\t" + str(Coordinates[1]) + "\t" + str(Coordinates[2])
 
     # Function to plot up the molecule using an xyz matplotlib plot
     def Show(self):
@@ -92,7 +97,7 @@ class Molecule:
         ax.w_zaxis.gridlines.set_lw(5.0)
         ax.scatter(X, Y, Z, s=Size, c=Colors, depthshade=False)
         plt.show()
-    def GenerateBonds(self, Threshold=1.4):                     # Generate a list of bonds based on distance
+    def GenerateBonds(self, Threshold=1.6):                     # Generate a list of bonds based on distance
         Bonds = []
         for AtomNumber1 in range(self.NAtoms):
             for AtomNumber2 in range(self.NAtoms):
