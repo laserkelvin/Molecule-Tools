@@ -21,9 +21,9 @@ class Molecule:
     # Initialises by adding instances of atoms class to the dictionary
     # from XYZ format
     def __init__(self, InputXYZ):
-        self.CalculatedCOM = False
-        self.Atoms = {}
-        self.COM = np.array([0., 0., 0.])
+        self.CalculatedCOM = False                              # Whether or not COM has been calculated already
+        self.Atoms = {}                                         # Dictionary holding instances of Atom class
+        self.COM = np.array([0., 0., 0.])                       # COM of molecule
         for atom in enumerate(InputXYZ):
             self.Atoms[str(atom[0])] = Atom(atom[1][1], atom[1][2], atom[1][3], atom[1][0])
         self.NAtoms = len(self.Atoms)
@@ -31,23 +31,35 @@ class Molecule:
     def CalculateCOM(self):
         CumSum = 0.                                             # Cumulative sum of m_i * sum(r_i)
         TotalMass = 0.                                          # Total mass of molecule
-        for AtomNumber in range(len(self.Atoms)):               # Loop over all atoms
+        for AtomNumber in range(self.NAtoms):               # Loop over all atoms
             CumSum = CumSum + self.Atoms[str(AtomNumber)].Mass * self.Atoms[str(AtomNumber)].Coordinates()
             TotalMass = TotalMass + self.Atoms[str(AtomNumber)].Mass
         self.CalculatedCOM = True                               # Flag COM as having been calculated for plotting
         self.COM = (1. / TotalMass) * CumSum
         return self.COM
+    # Function to shift the coordinates to centre of mass frame (I think it works)
+    # by making the COM zero
+    def Shift2COM(self):
+        self.CalculateCOM()
+        COM = self.COM
+        for AtomNumber in range(self.NAtoms):
+            self.Atoms[str(AtomNumber)].X = self.Atoms[str(AtomNumber)].X + (-COM[0])
+            self.Atoms[str(AtomNumber)].Y = self.Atoms[str(AtomNumber)].Y + (-COM[1])
+            self.Atoms[str(AtomNumber)].Z = self.Atoms[str(AtomNumber)].Z + (-COM[2])
+
     # Function to plot up the molecule using an xyz matplotlib plot
     def Show(self):
         HydrogenRadius = 53.                                    # in picometres
         AtomicRadii = {"H": 53. / HydrogenRadius,
                        "C": 67. / HydrogenRadius,
                        "O": 48. / HydrogenRadius,
-                       "COM": 50. / HydrogenRadius}
+                       "COM": 50. / HydrogenRadius,
+                       "X": 50. / HydrogenRadius}
         AtomicColours = {"H": "white",                          # CPK colours
                          "C": "black",
                          "O": "red",
-                         "COM": "green"}
+                         "COM": "green",
+                         "X": "purple"}
         NAtoms = len(self.Atoms)
         Colors = []
         if self.CalculatedCOM == False:
@@ -108,6 +120,31 @@ class Molecule:
                                                         'bonds': self.Bonds})
         mv.ball_and_sticks()
         return mv
+    # Routine effectively copied from down below, but adapted for use as molecule method
+    # Calculates the moment of inertia matrix without assuming that it's diagonal...
+    def CalculateInertiaMatrix(self):
+        InertiaMatrix = np.zeros((3,3), dtype=float)
+        self.InertiaMatrix = InertiaMatrix                      # Zero the matrix beforehand
+        for AtomNumber in range(self.NAtoms):                   # Loop over atoms in molecule
+            Coordinates = self.Atoms[str(AtomNumber)].Coordinates()         # Retrieve coordinates from atom
+            Mass = self.Atoms[str(AtomNumber)].Mass                         # Retrieve mass of atom
+            # Work out diagonal elements of the matrix
+            InertiaMatrix[0,0] = InertiaMatrix[0,0] + IXX(Coordinates[1], Coordinates[2], Mass)
+            InertiaMatrix[1,1] = InertiaMatrix[1,1] + IYY(Coordinates[0], Coordinates[2], Mass)
+            InertiaMatrix[2,2] = InertiaMatrix[2,2] + IZZ(Coordinates[0], Coordinates[1], Mass)
+            # Calculate off-diagonal elements of matrix
+            InertiaMatrix[0,1] = InertiaMatrix[0,1] + IXY(Coordinates[0], Coordinates[1], Mass)
+            InertiaMatrix[0,2] = InertiaMatrix[0,2] + IXZ(Coordinates[0], Coordinates[2], Mass)
+            InertiaMatrix[1,2] = InertiaMatrix[1,2] + IYZ(Coordinates[1], Coordinates[2], Mass)
+            self.InertiaMatrix = (InertiaMatrix + InertiaMatrix.T) / 2.
+            return self.InertiaMatrix
+    def PrincipalMoments(self):
+        if type(self.InertiaMatrix) == None:                    # check if MOI matrix has been calculated
+            self.CalculateInertiaMatrix()
+        else:
+            Diagonal = np.linalg.eig(self.InertiaMatrix)[0]
+            self.PMI = PMI2ABC(Diagonal)
+            return self.PMI
 
 # Atom class, has attributes of the xyz coordinates as well as its symbol and mass
 class Atom:
@@ -161,6 +198,7 @@ def Symbol2Mass(Atom):
     MassList = {"H": 1.00782503223,
                 "C": 12.00,
                 "O": 15.99491461957,
+                "X": 0.0                                    # Dummy atom
                 }
 #    return MassList[Atom]                                  # Returns mass in amu
     return (MassList[Atom] / constants.Avogadro) / 1e3      # Return mass in kg
@@ -210,7 +248,7 @@ def IYZ(y, z, mass):
 # Note on this: the standard orientation that Gaussian spits out is already rotated
 # to the inertial frame; that means we only need to calculate the diagonal elements
 # of the inertia tensor
-def CalculateInertiaMatrix(Molecule):
+def OldCalculateInertiaMatrix(Molecule):
     InertiaMatrix = np.zeros((3,3),dtype=float)
     for atom in enumerate(Molecule):
         # Calculate diagonal elements of inertia matrix
@@ -229,7 +267,7 @@ def CalculateInertiaMatrix(Molecule):
 # Converts the principle moments into rotational constants in 1/cm
 # These should agree with the rotational constants in Gaussian
 def PMI2ABC(Inertia):
-    return constants.h / (8 * (np.pi**2) * (constants.c * 100) * Inertia)
+    return constants.h / (8. * (np.pi**2.) * (constants.c * 100.) * Inertia)
 
 ############################### Normal mode analysis ###############################
 
