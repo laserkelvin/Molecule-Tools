@@ -18,10 +18,10 @@ enable_notebook()
 # Molecule class, a dictionary of atoms. Might be a bit clunky to 
 # reference...
 class Molecule:
-    AtomScalingFactor = 400.
     # Initialises by adding instances of atoms class to the dictionary
     # from XYZ format
     def __init__(self, InputXYZ):
+        self.AtomScalingFactor = 600.                           # Used for method Show()
         self.COMCoordinates = False                             # Initial state is not in COM coordinates
         self.CalculatedCOM = False                              # Whether or not COM has been calculated already
         self.Atoms = {}                                         # Dictionary holding instances of Atom class
@@ -102,6 +102,9 @@ class Molecule:
         ax.w_xaxis.gridlines.set_lw(5.0)                        # This makes the grid lines thicker apparently
         ax.w_yaxis.gridlines.set_lw(5.0)
         ax.w_zaxis.gridlines.set_lw(5.0)
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
         ax.scatter(X, Y, Z, s=Size, c=Colors, depthshade=False)
         try:                                                    # if the principal axes have been calculated,
             type(self.PrincipalAxes)                            # show them on the plot too
