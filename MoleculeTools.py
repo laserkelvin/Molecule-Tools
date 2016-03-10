@@ -21,6 +21,8 @@ class Molecule:
     # Initialises by adding instances of atoms class to the dictionary
     # from XYZ format
     def __init__(self, InputXYZ):
+        self.AtomScalingFactor = 600.                           # Used for method Show()
+        self.COMCoordinates = False                             # Initial state is not in COM coordinates
         self.CalculatedCOM = False                              # Whether or not COM has been calculated already
         self.Atoms = {}                                         # Dictionary holding instances of Atom class
         self.COM = np.array([0., 0., 0.])                       # COM of molecule
@@ -40,12 +42,22 @@ class Molecule:
     # Function to shift the coordinates to centre of mass frame (I think it works)
     # by making the COM zero
     def Shift2COM(self):
-        self.CalculateCOM()
-        COM = self.COM
+        if self.COMCoordinates == True:
+            print " Already in COM frame"
+            pass
+        else:
+            self.CalculateCOM()
+            COM = self.COM
+            for AtomNumber in range(self.NAtoms):
+                self.Atoms[str(AtomNumber)].X = self.Atoms[str(AtomNumber)].X + (-COM[0])
+                self.Atoms[str(AtomNumber)].Y = self.Atoms[str(AtomNumber)].Y + (-COM[1])
+                self.Atoms[str(AtomNumber)].Z = self.Atoms[str(AtomNumber)].Z + (-COM[2])
+            self.COMCoordinates = True
+    # Function that will format xyz
+    def ExportXYZ(self):
         for AtomNumber in range(self.NAtoms):
-            self.Atoms[str(AtomNumber)].X = self.Atoms[str(AtomNumber)].X + (-COM[0])
-            self.Atoms[str(AtomNumber)].Y = self.Atoms[str(AtomNumber)].Y + (-COM[1])
-            self.Atoms[str(AtomNumber)].Z = self.Atoms[str(AtomNumber)].Z + (-COM[2])
+            Coordinates = self.Atoms[str(AtomNumber)].Coordinates()
+            print self.Atoms[str(AtomNumber)].Symbol + "\t" + str(Coordinates[0]) + "\t" + str(Coordinates[1]) + "\t" + str(Coordinates[2])
 
     # Function to plot up the molecule using an xyz matplotlib plot
     def Show(self):
@@ -78,21 +90,37 @@ class Molecule:
             Z[AtomNumber] = self.Atoms[str(AtomNumber)].Z
             AtomicSymbol = self.Atoms[str(AtomNumber)].Symbol
             Colors.append(AtomicColours[AtomicSymbol])          # work out the colour for atom
-            Size[AtomNumber] = AtomicRadii[AtomicSymbol] * 250.
+            Size[AtomNumber] = AtomicRadii[AtomicSymbol] * self.AtomScalingFactor
         if self.CalculatedCOM == True:                          # If we calculated COM before plot it too
             X[NAtoms] = self.COM[0]
             Y[NAtoms] = self.COM[1]
             Z[NAtoms] = self.COM[2]
-            Size[NAtoms] = AtomicRadii["COM"] * 250.
+            Size[NAtoms] = AtomicRadii["COM"] * self.AtomScalingFactor
             Colors.append(AtomicColours["COM"])
         fig = plt.figure()                                      # Use matplotlib to plot atoms in 3D scatter
         ax = plt.axes(projection = "3d")
-        ax.w_xaxis.gridlines.set_lw(5.0)
+        ax.w_xaxis.gridlines.set_lw(5.0)                        # This makes the grid lines thicker apparently
         ax.w_yaxis.gridlines.set_lw(5.0)
         ax.w_zaxis.gridlines.set_lw(5.0)
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
         ax.scatter(X, Y, Z, s=Size, c=Colors, depthshade=False)
+        try:                                                    # if the principal axes have been calculated,
+            type(self.PrincipalAxes)                            # show them on the plot too
+            PX = np.zeros((3), dtype=float)                     # arrays for holding the principal axes
+            PY = np.zeros((3), dtype=float)                     # components
+            PZ = np.zeros((3), dtype=float)
+            AxesColors = ["red", "green", "blue"]
+            for AxisNumber in enumerate(self.PrincipalAxes):
+                Vector = AxisNumber[1]
+                ax.plot([0, Vector[0]], [0, Vector[1]], [0, Vector[2]],
+                antialiased=True, color=AxesColors[AxisNumber[0]], linestyle="dashed")
+        except AttributeError:
+            pass
+
         plt.show()
-    def GenerateBonds(self, Threshold=1.4):                     # Generate a list of bonds based on distance
+    def GenerateBonds(self, Threshold=1.6):                     # Generate a list of bonds based on distance
         Bonds = []
         for AtomNumber1 in range(self.NAtoms):
             for AtomNumber2 in range(self.NAtoms):
@@ -123,11 +151,18 @@ class Molecule:
     # Routine effectively copied from down below, but adapted for use as molecule method
     # Calculates the moment of inertia matrix without assuming that it's diagonal...
     def CalculateInertiaMatrix(self):
+        """
+        Calculates the Inertia Tensor assuming a center-of-mass frame.
+        """
+        if self.COMCoordinates == False:                        # come up with warning about not being in COM frame
+            print " Warning: not in COM frame! Inertia matrix will be wrong!"
+        else:
+            pass                                                # no need to worry if already in COM frame
         InertiaMatrix = np.zeros((3,3), dtype=float)
         self.InertiaMatrix = InertiaMatrix                      # Zero the matrix beforehand
         for AtomNumber in range(self.NAtoms):                   # Loop over atoms in molecule
-            Coordinates = self.Atoms[str(AtomNumber)].Coordinates()         # Retrieve coordinates from atom
-            Mass = self.Atoms[str(AtomNumber)].Mass                         # Retrieve mass of atom
+            Coordinates = self.Atoms[str(AtomNumber)].Coordinates() * 1e-10      # Retrieve coordinates, convert to metres
+            Mass = self.Atoms[str(AtomNumber)].Mass                              # Retrieve mass of atom
             # Work out diagonal elements of the matrix
             InertiaMatrix[0,0] = InertiaMatrix[0,0] + IXX(Coordinates[1], Coordinates[2], Mass)
             InertiaMatrix[1,1] = InertiaMatrix[1,1] + IYY(Coordinates[0], Coordinates[2], Mass)
@@ -136,17 +171,25 @@ class Molecule:
             InertiaMatrix[0,1] = InertiaMatrix[0,1] + IXY(Coordinates[0], Coordinates[1], Mass)
             InertiaMatrix[0,2] = InertiaMatrix[0,2] + IXZ(Coordinates[0], Coordinates[2], Mass)
             InertiaMatrix[1,2] = InertiaMatrix[1,2] + IYZ(Coordinates[1], Coordinates[2], Mass)
-            self.InertiaMatrix = (InertiaMatrix + InertiaMatrix.T) / 2.
-            return self.InertiaMatrix
+        # Apply sign change
+        InertiaMatrix[0,1] = -InertiaMatrix[0,1]
+        InertiaMatrix[0,2] = -InertiaMatrix[0,2]
+        InertiaMatrix[1,2] = -InertiaMatrix[1,2]
+        # Symmetrize 
+        self.InertiaMatrix = (InertiaMatrix + InertiaMatrix.T) / 2.
+        return self.InertiaMatrix
     # Diagonalise the moments of inerta matrix and work out the principal moments of inertia
     def PrincipalMoments(self):
         if type(self.InertiaMatrix) == None:                    # check if MOI matrix has been calculated
             self.CalculateInertiaMatrix()
         else:
-            Diagonal = np.linalg.eig(self.InertiaMatrix)[0]     # Ignore the eigenvectors
-            self.PMI = PMI2ABC(Diagonal)
+            Diagonal = np.linalg.eig(self.InertiaMatrix)     # Ignore the eigenvectors
+            Eigenvalues = Diagonal[0]
+            Eigenvectors = Diagonal[1]
+            self.PMI = PMI2ABC(Eigenvalues)                  # Return the rotational constants in 1/cm
+            self.PrincipalAxes = Eigenvectors                # Return the eigenvectors for plotting
             return self.PMI
-    def SumMass(self):
+    def SumMass(self):                                          
         Mass = 0.
         for AtomNumber in range(self.NAtoms):
             Mass = Mass + self.Atoms[str(AtomNumber)].Mass
@@ -238,27 +281,26 @@ def CalculateReducedMass(Masses):
 
 ############################### Moments of Inertia ###############################
 
-# Here the routines take x,y,z as Angstroms, and mass in grams!
+# Here the routines take x,y,z as Angstroms, and mass in kilograms!
 # XX diagonal elemnt of I
 def IXX(y, z, mass):
-    return mass * ((y * 1e-10)**2 + (z * 1e-10)**2)
+    return mass * ((y)**2 + (z)**2)
 
 # ZZ diagonal element of I
 def IZZ(x, y, mass):
-    return mass * ((x * 1e-10)**2 + (y * 1e-10)**2)
+    return mass * ((x)**2 + (y)**2)
 
 # YY diagonal element of I
 def IYY(x, z, mass):
-    return mass * ((x * 1e-10)**2 + (z * 1e-10)**2)
-
+    return mass * ((x)**2 + (z)**2)
 def IXY(x, y, mass):
-    return mass * (x * y) * 1e-10
+    return mass * (x * y)
 
 def IXZ(x, z, mass):
-    return mass * (x * z) * 1e-10
+    return mass * (x * z)
 
 def IYZ(y, z, mass):
-    return mass * (y * z) * 1e-10
+    return mass * (y * z)
 
 # Note on this: the standard orientation that Gaussian spits out is already rotated
 # to the inertial frame; that means we only need to calculate the diagonal elements
@@ -282,7 +324,7 @@ def OldCalculateInertiaMatrix(Molecule):
 # Converts the principle moments into rotational constants in 1/cm
 # These should agree with the rotational constants in Gaussian
 def PMI2ABC(Inertia):
-    return constants.h / (8. * (np.pi**2.) * (constants.c * 100.) * Inertia)
+    return constants.h / (8 * (np.pi)**2 * (constants.c * 100.) * Inertia)
 
 ############################### Normal mode analysis ###############################
 
