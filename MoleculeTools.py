@@ -98,7 +98,7 @@ class Molecule:
             Colors.append(AtomicColours["COM"])
         fig = plt.figure()                                      # Use matplotlib to plot atoms in 3D scatter
         ax = plt.axes(projection = "3d")
-        ax.w_xaxis.gridlines.set_lw(5.0)
+        ax.w_xaxis.gridlines.set_lw(5.0)                        # This makes the grid lines thicker apparently
         ax.w_yaxis.gridlines.set_lw(5.0)
         ax.w_zaxis.gridlines.set_lw(5.0)
         ax.scatter(X, Y, Z, s=Size, c=Colors, depthshade=False)
@@ -107,9 +107,11 @@ class Molecule:
             PX = np.zeros((3), dtype=float)                     # arrays for holding the principal axes
             PY = np.zeros((3), dtype=float)                     # components
             PZ = np.zeros((3), dtype=float)
-            for Axis in self.PrincipalAxes:
-                ax.plot([0, Axis[0]], [0, Axis[1]], [0, Axis[2]],
-                antialiased=True, color="green", linestyle="dashed")
+            AxesColors = ["red", "green", "blue"]
+            for AxisNumber in enumerate(self.PrincipalAxes):
+                Vector = AxisNumber[1]
+                ax.plot([0, Vector[0]], [0, Vector[1]], [0, Vector[2]],
+                antialiased=True, color=AxesColors[AxisNumber[0]], linestyle="dashed")
         except AttributeError:
             pass
 
