@@ -18,6 +18,7 @@ enable_notebook()
 # Molecule class, a dictionary of atoms. Might be a bit clunky to 
 # reference...
 class Molecule:
+    AtomScalingFactor = 400.
     # Initialises by adding instances of atoms class to the dictionary
     # from XYZ format
     def __init__(self, InputXYZ):
@@ -89,12 +90,12 @@ class Molecule:
             Z[AtomNumber] = self.Atoms[str(AtomNumber)].Z
             AtomicSymbol = self.Atoms[str(AtomNumber)].Symbol
             Colors.append(AtomicColours[AtomicSymbol])          # work out the colour for atom
-            Size[AtomNumber] = AtomicRadii[AtomicSymbol] * 250.
+            Size[AtomNumber] = AtomicRadii[AtomicSymbol] * self.AtomScalingFactor
         if self.CalculatedCOM == True:                          # If we calculated COM before plot it too
             X[NAtoms] = self.COM[0]
             Y[NAtoms] = self.COM[1]
             Z[NAtoms] = self.COM[2]
-            Size[NAtoms] = AtomicRadii["COM"] * 250.
+            Size[NAtoms] = AtomicRadii["COM"] * self.AtomScalingFactor
             Colors.append(AtomicColours["COM"])
         fig = plt.figure()                                      # Use matplotlib to plot atoms in 3D scatter
         ax = plt.axes(projection = "3d")
