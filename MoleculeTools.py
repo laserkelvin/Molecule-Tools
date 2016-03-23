@@ -309,7 +309,7 @@ def CalculateAngle(A, B, C):
     BCLength = CalculateDistance(B, C)               # Magnitude of BC
     DotProduct = np.dot(AB, BC)                      # Dot product of AB dot BC
     # Return the angle formed by A - B - C in degrees
-    return 180. - (np.arccos(DotProduct / (ABLength * BCLength)) * (180. / np.pi))
+    return (np.arccos(DotProduct / (ABLength * BCLength)) * (180. / np.pi))
 
 # Function to return the reduced mass of fragments
 # Takes a list of masses in whatever units
