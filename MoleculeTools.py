@@ -21,6 +21,46 @@ class Molecule:
     # Initialises by adding instances of atoms class to the dictionary
     # from XYZ format
     def __init__(self, InputXYZ):
+        """ Initialises an instance of Molecule
+
+        Keyword arguments:
+        InputXYZ - The XYZ coordinates as read in using the function ReadXYZ
+
+        Attributes:
+        AtomScalingFactor - Used for scaling the size of atoms in Show() method
+        COMCoordinates - Boolean flag for the coordinates are in COM frame
+        CalculatedCOM - Boolean flag for whether or not COM has been calculated 
+        Atoms - Dictionary that holds instances of Atoms class 
+        COM - np.ndarray holding COM coordinates
+        
+
+        Methods:
+        CalculateCOM() - Returns the center-of-mass coordinates, and flags
+                         the COM coordinates to be calculated.
+        Shift2COM() - Shifts the coordinates of all the atoms from arbitrary
+                      laboratory frame to the centre-of-mass frame.
+        ExportXYZ() - Returns the XYZ coordinates in a way that's copy-pastable
+                      to wxMacMolPlt or some electronic structure program
+        Show() - Plots the atoms of the molecule in XYZ coordinates using the
+                 matplotlib scatter library. Additional things that are plotted:
+                 If the COM has been calculated:
+                 it will also show this as a purple sphere. 
+                 If the PrincipalAxes have been calculated:
+                 it will show the colour coded axes - RGB for elements 0,1,2
+        GenerateBonds() - Returns connectivity between atoms based on a threshold
+                          minimum distance
+        ChemView() - Uses the ChemViewer module in IPython Notebook to display a
+                     3D model of the molecule. Requires GenerateBonds() to pipe 
+                     connectivity.
+        CalculateInertiaMatrix() - Returns the moments of inertia (diagonal) and
+                                   products of inertia (off-diagonal) matrix in
+                                   SI units (kg m**2). This method assumes the
+                                   molecule is already in a COM frame by Shift2COM.
+        PrincipalMoments() - Returns the PrincipalMoments and PrincipalAxes by
+                             diagonalising the inertia matrix. PrincipalMoments are
+                             reported in 1/cm.
+
+        """
         self.AtomScalingFactor = 600.                           # Used for method Show()
         self.COMCoordinates = False                             # Initial state is not in COM coordinates
         self.CalculatedCOM = False                              # Whether or not COM has been calculated already
@@ -269,7 +309,7 @@ def CalculateAngle(A, B, C):
     BCLength = CalculateDistance(B, C)               # Magnitude of BC
     DotProduct = np.dot(AB, BC)                      # Dot product of AB dot BC
     # Return the angle formed by A - B - C in degrees
-    return 180. - (np.arccos(DotProduct / (ABLength * BCLength)) * (180. / np.pi))
+    return (np.arccos(DotProduct / (ABLength * BCLength)) * (180. / np.pi))
 
 # Function to return the reduced mass of fragments
 # Takes a list of masses in whatever units
