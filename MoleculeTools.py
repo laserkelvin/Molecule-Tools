@@ -247,6 +247,7 @@ class Atom:
         self.X = float(X)
         self.Y = float(Y)
         self.Z = float(Z)
+        self.Coordinate = np.array([self.X, self.Y, self.Z])
         self.Symbol = Symbol
         self.Mass = Symbol2Mass(self.Symbol)
     # Returns the coordinates of an atom
@@ -315,8 +316,8 @@ def CalculateAngle(A, B, C):
 # Takes a list of masses in whatever units
 def CalculateReducedMass(Masses):
     ReducedMass = 0.
-    for mass in enumerate(Masses):
-        ReducedMass = ReducedMass + (1. / mass[1])
+    for index, mass in enumerate(Masses):
+        ReducedMass = ReducedMass + (1. / mass)
     return 1. / ReducedMass
 
 ############################### Moments of Inertia ###############################
