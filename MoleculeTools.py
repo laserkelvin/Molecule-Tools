@@ -238,21 +238,34 @@ class Molecule:
 
 # Atom class, has attributes of the xyz coordinates as well as its symbol and mass
 class Atom:
-    X = 0.
-    Y = 0.
-    Z = 0.
-    Symbol = " "
-    Mass = 0.
-    def __init__(self, X, Y, Z, Symbol):
-        self.X = float(X)
-        self.Y = float(Y)
-        self.Z = float(Z)
-        self.Coordinate = np.array([self.X, self.Y, self.Z])
+    def __init__(self, Coordinate, Symbol):
+        """ Label is atom symbol string,
+            Coordinates is 3-tuple list
+            
+            Charges are taken from this list:
+            https://en.wikipedia.org/wiki/Effective_nuclear_charge#Values
+        """
+        ChargeTable = {"C": 12.026,
+                       "B": 9.677,
+                       "H": 1.,
+                       "O": 16.603,
+                       "N": 14.346,
+                       "He": 1.688,
+                       "X": 0.0,               # Dummy atom
+                      }
+        self.Coordinates = np.array(Coordinate)
         self.Symbol = Symbol
         self.Mass = Symbol2Mass(self.Symbol)
+        self.Charge = ChargeTable[self.Symbol]
     # Returns the coordinates of an atom
-    def Coordinates(self):
-        return np.array([self.X, self.Y, self.Z])
+    def GetCoordinates(self):
+        return self.Coordinates
+    
+    def GetSymbol(self):
+        return self.Symbol
+    
+    def GetCharge(self):
+        return self.Charge
 
 ############################### I/O ###############################
 
@@ -268,6 +281,21 @@ def ReadXYZ(File):
     for line in range(NAtoms):
         Coordinates.append(fc[line].split())
     return Coordinates
+
+def MoleculeFromXYZ(File):
+    """ Read in a chemical file format .xyz """
+    f = open(File, "r")
+    fc = f.readlines()[2:]            # Skip the number of atoms and comment line
+    f.close()
+    NAtoms = len(fc)
+    Molecule = dict()
+    for Line in range(NAtoms):
+        SplitLine = fc[Line].split()
+        Symbol = SplitLine[0]                                 # First item is atom symbol
+        Coordinates = np.array([SplitLine[1], SplitLine[2], SplitLine[3]])
+        Coordinates = Coordinates.astype(np.float)            # convert coordinates to numpy float array
+        Molecule[Line] = Atom(Coordinates, Symbol)            # Populate dictionary
+    return Molecule
 
 def ReadNormalModes(File):
     f = open(File, "r")
