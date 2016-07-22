@@ -66,16 +66,18 @@ class Molecule:
         self.CalculatedCOM = False                              # Whether or not COM has been calculated already
         self.Atoms = {}                                         # Dictionary holding instances of Atom class
         self.COM = np.array([0., 0., 0.])                       # COM of molecule
-        for atom in enumerate(InputXYZ):
-            self.Atoms[str(atom[0])] = Atom(atom[1][1], atom[1][2], atom[1][3], atom[1][0])
+        self.Atoms = MoleculeFromXYZ(InputXYZ)
         self.NAtoms = len(self.Atoms)
     # Function to calculate the centre of mass for a given molecule in XYZ coordinates
     def CalculateCOM(self):
         CumSum = 0.                                             # Cumulative sum of m_i * sum(r_i)
         TotalMass = 0.                                          # Total mass of molecule
-        for AtomNumber in range(self.NAtoms):               # Loop over all atoms
-            CumSum = CumSum + self.Atoms[str(AtomNumber)].Mass * self.Atoms[str(AtomNumber)].Coordinates()
-            TotalMass = TotalMass + self.Atoms[str(AtomNumber)].Mass
+        for Atom in self.Atoms:
+            CumSum = CumSum + self.Atoms[Atom].GetMass() * self.Atoms[Atom].GetCoordinates()
+            TotalMass = TotalMass + self.Atoms[Atom].GetMass()
+        #for AtomNumber in range(self.NAtoms):               # Loop over all atoms
+        #    CumSum = CumSum + self.Atoms[str(AtomNumber)].Mass * self.Atoms[str(AtomNumber)].Coordinates()
+        #    TotalMass = TotalMass + self.Atoms[str(AtomNumber)].Mass
         self.CalculatedCOM = True                               # Flag COM as having been calculated for plotting
         self.COM = (1. / TotalMass) * CumSum
         return self.COM
@@ -87,17 +89,13 @@ class Molecule:
             pass
         else:
             self.CalculateCOM()
-            COM = self.COM
-            for AtomNumber in range(self.NAtoms):
-                self.Atoms[str(AtomNumber)].X = self.Atoms[str(AtomNumber)].X + (-COM[0])
-                self.Atoms[str(AtomNumber)].Y = self.Atoms[str(AtomNumber)].Y + (-COM[1])
-                self.Atoms[str(AtomNumber)].Z = self.Atoms[str(AtomNumber)].Z + (-COM[2])
+            for Atom in self.Atoms:
+                self.Atoms[Atom].Coordinates = self.Atoms[Atom].GetCoordinates() + (-self.COM)
             self.COMCoordinates = True
     # Function that will format xyz
     def ExportXYZ(self):
-        for AtomNumber in range(self.NAtoms):
-            Coordinates = self.Atoms[str(AtomNumber)].Coordinates()
-            print self.Atoms[str(AtomNumber)].Symbol + "\t" + str(Coordinates[0]) + "\t" + str(Coordinates[1]) + "\t" + str(Coordinates[2])
+        for Atom in self.Atoms:
+            print self.Atoms[Atom].GetSymbol() + "\t" + str(self.Atoms[Atom].GetCoordinates())
 
     # Function to plot up the molecule using an xyz matplotlib plot
     def Show(self):
@@ -162,14 +160,14 @@ class Molecule:
         plt.show()
     def GenerateBonds(self, Threshold=1.6):                     # Generate a list of bonds based on distance
         Bonds = []
-        for AtomNumber1 in range(self.NAtoms):
-            for AtomNumber2 in range(self.NAtoms):
-                if AtomNumber1 == AtomNumber2:                  # If it's the same atom don't worry about it
+        for Atom1 in self.Atoms:
+            for Atom2 in self.Atoms:
+                if Atom1 == Atom2:                  # If it's the same atom don't worry about it
                     pass
                 else:
-                    Distance = CalculateDistance(self.Atoms[str(AtomNumber1)], self.Atoms[str(AtomNumber2)])
+                    Distance = CalculateDistance(self.Atoms[Atom1], self.Atoms[Atom2])
                     if Distance <= Threshold:                   # If distance is less than threshold, it's a bond!
-                        Bonds.append( (AtomNumber1, AtomNumber2) )
+                        Bonds.append( (Atom1, Atom2) )
         self.Bonds = Bonds
         return Bonds
     def ChemView(self):                                         # Use ChemView module in notebook to plot molecule
@@ -200,9 +198,9 @@ class Molecule:
             pass                                                # no need to worry if already in COM frame
         InertiaMatrix = np.zeros((3,3), dtype=float)
         self.InertiaMatrix = InertiaMatrix                      # Zero the matrix beforehand
-        for AtomNumber in range(self.NAtoms):                   # Loop over atoms in molecule
-            Coordinates = self.Atoms[str(AtomNumber)].Coordinates() * 1e-10      # Retrieve coordinates, convert to metres
-            Mass = self.Atoms[str(AtomNumber)].Mass                              # Retrieve mass of atom
+        for Atom in self.Atoms:                   # Loop over atoms in molecule
+            Coordinates = self.Atoms[Atom].GetCoordinates() * 1e-10      # Retrieve coordinates, convert to metres
+            Mass = self.Atoms[Atom].GetMass()                            # Retrieve mass of atom
             # Work out diagonal elements of the matrix
             InertiaMatrix[0,0] = InertiaMatrix[0,0] + IXX(Coordinates[1], Coordinates[2], Mass)
             InertiaMatrix[1,1] = InertiaMatrix[1,1] + IYY(Coordinates[0], Coordinates[2], Mass)
@@ -237,7 +235,7 @@ class Molecule:
         return self.Mass
 
 # Atom class, has attributes of the xyz coordinates as well as its symbol and mass
-class Atom:
+class __Atom__:
     def __init__(self, Coordinate, Symbol):
         """ Label is atom symbol string,
             Coordinates is 3-tuple list
@@ -267,6 +265,9 @@ class Atom:
     def GetCharge(self):
         return self.Charge
 
+    def GetMass(self):
+        return self.Mass
+
 ############################### I/O ###############################
 
 # Function to read the output xyz coordinates. The below functions
@@ -282,6 +283,15 @@ def ReadXYZ(File):
         Coordinates.append(fc[line].split())
     return Coordinates
 
+def MoleculeFromCoordinates(Atoms, Coordinates):
+    """ Takes already read in coordinates and converts
+        them into atom objects
+    """
+    Molecule = dict()
+    for Index, Atom in enumerate(Atoms):
+        Molecule[Index] = __Atom__(Coordinates[Index,:], Atom)
+    return Molecule
+
 def MoleculeFromXYZ(File):
     """ Read in a chemical file format .xyz """
     f = open(File, "r")
@@ -290,11 +300,14 @@ def MoleculeFromXYZ(File):
     NAtoms = len(fc)
     Molecule = dict()
     for Line in range(NAtoms):
-        SplitLine = fc[Line].split()
-        Symbol = SplitLine[0]                                 # First item is atom symbol
-        Coordinates = np.array([SplitLine[1], SplitLine[2], SplitLine[3]])
-        Coordinates = Coordinates.astype(np.float)            # convert coordinates to numpy float array
-        Molecule[Line] = Atom(Coordinates, Symbol)            # Populate dictionary
+        try:                          # Sometimes the NAtoms is wrong because of a new line at the bottom
+            SplitLine = fc[Line].split()
+            Symbol = SplitLine[0]                                 # First item is atom symbol
+            Coordinates = np.array([SplitLine[1], SplitLine[2], SplitLine[3]])
+            Coordinates = Coordinates.astype(np.float)            # convert coordinates to numpy float array
+            Molecule[Line] = __Atom__(Coordinates, Symbol)            # Populate dictionary
+        except IndexError:
+            pass
     return Molecule
 
 def ReadNormalModes(File):
@@ -324,16 +337,14 @@ def Symbol2Mass(Atom):
 
 # Calculates the distance between two atoms
 def CalculateDistance(A, B):
-    dX = (A.X - B.X)**2
-    dY = (A.Y - B.Y)**2
-    dZ = (A.Z - B.Z)**2
-    return np.sqrt(dX + dY + dZ)
+    Distance = np.sqrt(np.sum((A.GetCoordinates() - B.GetCoordinates())**2.))
+    return Distance
 
 # Uses cartesian points A, B, C to calculate the angle
 # formed by A - B - C using vectors. Atom B is the centre of the angle!
 def CalculateAngle(A, B, C):
-    AB = B.Coordinates() - A.Coordinates()           # Calculate vector AB
-    BC = C.Coordinates() - B.Coordinates()           # Calculate vector BC
+    AB = B.GetCoordinates() - A.GetCoordinates()           # Calculate vector AB
+    BC = C.GetCoordinates() - B.GetCoordinates()           # Calculate vector BC
     ABLength = CalculateDistance(A, B)               # Work out magnitude of AB
     BCLength = CalculateDistance(B, C)               # Magnitude of BC
     DotProduct = np.dot(AB, BC)                      # Dot product of AB dot BC
