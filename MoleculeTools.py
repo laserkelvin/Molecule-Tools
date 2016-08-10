@@ -20,7 +20,7 @@ enable_notebook()
 class Molecule:
     # Initialises by adding instances of atoms class to the dictionary
     # from XYZ format
-    def __init__(self, InputXYZ):
+    def __init__(self, InputXYZ=None):
         """ Initialises an instance of Molecule
 
         Keyword arguments:
@@ -66,8 +66,10 @@ class Molecule:
         self.CalculatedCOM = False                              # Whether or not COM has been calculated already
         self.Atoms = {}                                         # Dictionary holding instances of Atom class
         self.COM = np.array([0., 0., 0.])                       # COM of molecule
-        self.Atoms = MoleculeFromXYZ(InputXYZ)
-        self.NAtoms = len(self.Atoms)
+        if InputXYZ is not None:
+            """ If no input is specified, don't read in """
+            self.Atoms = MoleculeFromXYZ(InputXYZ)
+            self.NAtoms = len(self.Atoms)
     # Function to calculate the centre of mass for a given molecule in XYZ coordinates
     def CalculateCOM(self):
         CumSum = 0.                                             # Cumulative sum of m_i * sum(r_i)
@@ -122,17 +124,13 @@ class Molecule:
             Y = np.zeros((NAtoms + 1), dtype=float)             # one more element for COM point
             Z = np.zeros((NAtoms + 1), dtype=float)
             Size = np.zeros((NAtoms + 1), dtype=float)          # Size of the atoms
-        for AtomNumber in range(NAtoms):                        # Loop over all atoms
-            X[AtomNumber] = self.Atoms[str(AtomNumber)].X
-            Y[AtomNumber] = self.Atoms[str(AtomNumber)].Y
-            Z[AtomNumber] = self.Atoms[str(AtomNumber)].Z
-            AtomicSymbol = self.Atoms[str(AtomNumber)].Symbol
+        for Index, AtomNumber in enumerate(self.Atoms):                        # Loop over all atoms
+            X[Index], Y[Index], Z[Index] = self.Atoms[AtomNumber].GetCoordinates()
+            AtomicSymbol = self.Atoms[AtomNumber].GetSymbol()
             Colors.append(AtomicColours[AtomicSymbol])          # work out the colour for atom
-            Size[AtomNumber] = AtomicRadii[AtomicSymbol] * self.AtomScalingFactor
+            Size[Index] = AtomicRadii[AtomicSymbol] * self.AtomScalingFactor
         if self.CalculatedCOM == True:                          # If we calculated COM before plot it too
-            X[NAtoms] = self.COM[0]
-            Y[NAtoms] = self.COM[1]
-            Z[NAtoms] = self.COM[2]
+            X[NAtoms], Y[NAtoms], Z[NAtoms] = self.COM
             Size[NAtoms] = AtomicRadii["COM"] * self.AtomScalingFactor
             Colors.append(AtomicColours["COM"])
         fig = plt.figure()                                      # Use matplotlib to plot atoms in 3D scatter
@@ -174,9 +172,9 @@ class Molecule:
         NAtoms = self.NAtoms
         Coordinates = np.zeros((NAtoms, 3), dtype=float)
         AtomSymbols = []
-        for AtomNumber in range(NAtoms):                        # Make a list of XYZ and atomic symbol arrays
-            Coordinates[AtomNumber] = self.Atoms[str(AtomNumber)].Coordinates()
-            AtomSymbols.append(self.Atoms[str(AtomNumber)].Symbol)
+        for Index, AtomNumber in enumerate(self.Atoms):                        # Make a list of XYZ and atomic symbol arrays
+            Coordinates[Index] = self.Atoms[AtomNumber].GetCoordinates()
+            AtomSymbols.append(self.Atoms[AtomNumber].GetSymbol)
         try:
             mv = MolecularViewer(Coordinates, topology={'atom_types': AtomSymbols,
                                                         'bonds': self.Bonds})
